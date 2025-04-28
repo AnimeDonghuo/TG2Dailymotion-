@@ -2,11 +2,24 @@ from pymongo import MongoClient
 from config import Config
 from datetime import datetime
 from bson import ObjectId
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MongoDB:
     def __init__(self):
-        self.client = MongoClient(Config.DATABASE_URL)
-        self.db = self.client.get_database('dailymotion_bot')
+        try:
+            self.client = MongoClient(Config.DATABASE_URL)
+            self.db = self.client.get_database('dailymotion_bot')
+            
+            # Create indexes
+            self.db.users.create_index("telegram_id", unique=True)
+            self.db.channels.create_index("user_id")
+            self.db.uploads.create_index([("user_id", 1), ("upload_date", 1)])
+            logger.info("Database connection established")
+        except Exception as e:
+            logger.error(f"Database connection failed: {str(e)}")
+            raise
         
     def get_user(self, telegram_id):
         return self.db.users.find_one({"telegram_id": telegram_id})
