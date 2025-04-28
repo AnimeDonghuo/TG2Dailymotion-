@@ -3,5 +3,4 @@ python-telegram-bot==20.3
 requests
 pymongo
 dnspython
-python-dailymotion
 apscheduler
