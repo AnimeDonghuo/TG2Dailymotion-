@@ -1,73 +1,60 @@
-import requests
-from config import Config
-from urllib.parse import urlencode
+import dailymotion
+import logging
+from typing import Dict, Any
 
-class DailymotionAPI:
-    def __init__(self):
-        self.base_url = "https://api.dailymotion.com"
-        self.token = self._get_access_token()
+logger = logging.getLogger(__name__)
+
+async def verify_dailymotion_credentials(api_key: str, api_secret: str, email: str, password: str) -> Dict[str, Any]:
+    try:
+        dm = dailymotion.Dailymotion()
+        dm.set_grant_type(
+            'password',
+            api_key=api_key,
+            api_secret=api_secret,
+            username=email,
+            password=password,
+            scope=['manage_videos']
+        )
         
-    def _get_access_token(self):
-        auth_url = f"{self.base_url}/oauth/token"
-        payload = {
-            'grant_type': 'password',
-            'client_id': Config.DAILYMOTION_KEY,
-            'client_secret': Config.DAILYMOTION_SECRET,
-            'username': Config.DAILYMOTION_USERNAME,
-            'password': Config.DAILYMOTION_PASSWORD,
-            'scope': 'manage_videos'
+        # Get user info to verify credentials
+        user_info = dm.get('/me')
+        
+        return {
+            'success': True,
+            'username': user_info.get('username'),
+            'user_id': user_info.get('id')
         }
         
-        response = requests.post(auth_url, data=payload)
-        if response.status_code == 200:
-            return response.json().get('access_token')
-        else:
-            raise Exception(f"Authentication failed: {response.text}")
-    
-    def upload_video(self, file_path, title, channel_id=None, description=None, tags=None):
-        try:
-            upload_url = f"{self.base_url}/me/videos"
-            headers = {
-                'Authorization': f'Bearer {self.token}'
-            }
-            
-            params = {
-                'title': title,
-                'published': True
-            }
-            
-            if channel_id:
-                params['channel'] = channel_id
-            if description:
-                params['description'] = description
-            if tags:
-                params['tags'] = tags
-                
-            with open(file_path, 'rb') as video_file:
-                files = {'file': video_file}
-                response = requests.post(upload_url, headers=headers, data=params, files=files)
-                
-            if response.status_code == 200:
-                return response.json().get('id'), None
-            else:
-                return None, response.text
-        except Exception as e:
-            return None, str(e)
-    
-    def get_channel_info(self, channel_id):
-        try:
-            url = f"{self.base_url}/channel/{channel_id}"
-            params = {
-                'fields': 'id,name,description,avatar_120_url'
-            }
-            headers = {
-                'Authorization': f'Bearer {self.token}'
-            }
-            
-            response = requests.get(url, headers=headers, params=params)
-            if response.status_code == 200:
-                return response.json(), None
-            else:
-                return None, response.text
-        except Exception as e:
-            return None, str(e)
+    except Exception as e:
+        logger.error(f"DM verification failed: {e}")
+        return {'success': False}
+
+async def upload_to_dailymotion(channel_data: Dict[str, Any], file_path: str, title: str) -> Dict[str, Any]:
+    try:
+        dm = dailymotion.Dailymotion()
+        dm.set_grant_type(
+            'password',
+            api_key=channel_data['api_key'],
+            api_secret=channel_data['api_secret'],
+            username=channel_data['email'],
+            password=channel_data['password'],
+            scope=['manage_videos']
+        )
+        
+        # Upload the video with progress
+        url = dm.upload(file_path)
+        result = dm.post('/me/videos', {
+            'url': url,
+            'title': title,
+            'published': True
+        })
+        
+        return {
+            'success': True,
+            'video_id': result.get('id'),
+            'url': f"https://dailymotion.com/video/{result.get('id')}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Upload failed: {e}")
+        return {'success': False}
