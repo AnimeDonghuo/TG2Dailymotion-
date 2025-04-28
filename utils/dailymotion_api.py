@@ -1,21 +1,37 @@
-import dailymotion
+import requests
 from config import Config
+from urllib.parse import urlencode
 
 class DailymotionAPI:
     def __init__(self):
-        self.dm = dailymotion.Dailymotion()
-        self.dm.set_grant_type('password', api_key=Config.DAILYMOTION_KEY, 
-                             api_secret=Config.DAILYMOTION_SECRET)
+        self.base_url = "https://api.dailymotion.com"
+        self.token = self._get_access_token()
+        
+    def _get_access_token(self):
+        auth_url = f"{self.base_url}/oauth/token"
+        payload = {
+            'grant_type': 'password',
+            'client_id': Config.DAILYMOTION_KEY,
+            'client_secret': Config.DAILYMOTION_SECRET,
+            'username': Config.DAILYMOTION_USERNAME,
+            'password': Config.DAILYMOTION_PASSWORD,
+            'scope': 'manage_videos'
+        }
+        
+        response = requests.post(auth_url, data=payload)
+        if response.status_code == 200:
+            return response.json().get('access_token')
+        else:
+            raise Exception(f"Authentication failed: {response.text}")
     
     def upload_video(self, file_path, title, channel_id=None, description=None, tags=None):
         try:
-            # Authenticate
-            self.dm.set_grant_type('password', api_key=Config.DAILYMOTION_KEY,
-                                 api_secret=Config.DAILYMOTION_SECRET)
+            upload_url = f"{self.base_url}/me/videos"
+            headers = {
+                'Authorization': f'Bearer {self.token}'
+            }
             
-            # Upload parameters
             params = {
-                'url': file_path,
                 'title': title,
                 'published': True
             }
@@ -27,16 +43,31 @@ class DailymotionAPI:
             if tags:
                 params['tags'] = tags
                 
-            # Upload video
-            result = self.dm.post('/me/videos', params)
-            return result.get('id'), None
+            with open(file_path, 'rb') as video_file:
+                files = {'file': video_file}
+                response = requests.post(upload_url, headers=headers, data=params, files=files)
+                
+            if response.status_code == 200:
+                return response.json().get('id'), None
+            else:
+                return None, response.text
         except Exception as e:
             return None, str(e)
     
     def get_channel_info(self, channel_id):
         try:
-            fields = 'id,name,description,avatar_120_url'
-            channel = self.dm.get(f'/channel/{channel_id}', fields=fields)
-            return channel, None
+            url = f"{self.base_url}/channel/{channel_id}"
+            params = {
+                'fields': 'id,name,description,avatar_120_url'
+            }
+            headers = {
+                'Authorization': f'Bearer {self.token}'
+            }
+            
+            response = requests.get(url, headers=headers, params=params)
+            if response.status_code == 200:
+                return response.json(), None
+            else:
+                return None, response.text
         except Exception as e:
             return None, str(e)
