@@ -4,3 +4,4 @@ python-dotenv>=0.19
 requests>=2.26
 dnspython>=2.1
 apscheduler>=3.8
+dailymotion
