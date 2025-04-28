@@ -1,0 +1,22 @@
+services:
+  - name: dailymotion-bot
+    image: koyeb/python
+    ports:
+      - port: 8000
+        http: /
+    env:
+      - name: TELEGRAM_BOT_TOKEN
+        secret: true
+      - name: DAILYMOTION_API_KEY
+        secret: true
+      - name: DAILYMOTION_API_SECRET
+        secret: true
+      - name: ADMIN_USER_ID
+        secret: true
+      - name: DATABASE_URL
+        secret: true
+    regions:
+      - fra
+    scalings:
+      min: 1
+      max: 1
