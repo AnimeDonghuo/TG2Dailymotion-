@@ -39,9 +39,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle errors in the telegram bot."""
+    """Handle all errors in the telegram bot."""
     logger.error("Exception while handling an update:", exc_info=context.error)
     
+    # Try to send error message to user
     if update and hasattr(update, 'effective_message'):
         try:
             await update.effective_message.reply_text(
@@ -53,45 +54,55 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 def main() -> None:
     """Start the bot."""
-    # Create the Application
-    application = Application.builder().token(Config.TELEGRAM_TOKEN).build()
+    try:
+        # Create the Application
+        application = Application.builder().token(Config.TELEGRAM_TOKEN).build()
 
-    # Add error handler first
-    application.add_error_handler(error_handler)
+        # Add error handler first
+        application.add_error_handler(error_handler)
 
-    # Command handlers
-    application.add_handler(CommandHandler("start", start_handler))
-    application.add_handler(CommandHandler("help", help_handler))
-    application.add_handler(CommandHandler("limitstatus", limit_status_handler))
-    application.add_handler(CommandHandler("channelstatus", channel_status_handler))
-    application.add_handler(CommandHandler("fullguide", full_guide_handler))
-    application.add_handler(CommandHandler("pricing", pricing_handler))
-    application.add_handler(CommandHandler("ping", lambda update, context: update.message.reply_text("🏓 Pong!")))
+        # Command handlers
+        application.add_handler(CommandHandler("start", start_handler))
+        application.add_handler(CommandHandler("help", help_handler))
+        application.add_handler(CommandHandler("limitstatus", limit_status_handler))
+        application.add_handler(CommandHandler("channelstatus", channel_status_handler))
+        application.add_handler(CommandHandler("fullguide", full_guide_handler))
+        application.add_handler(CommandHandler("pricing", pricing_handler))
+        application.add_handler(CommandHandler("ping", lambda update, context: update.message.reply_text("🏓 Pong!")))
 
-    # Admin commands
-    application.add_handler(CommandHandler("addpremium", add_premium_handler))
-    application.add_handler(CommandHandler("removepremium", remove_premium_handler))
-    application.add_handler(CommandHandler("resetlimit", reset_limit_handler))
-    application.add_handler(CommandHandler("broadcast", broadcast_handler))
+        # Admin commands
+        application.add_handler(CommandHandler("addpremium", add_premium_handler))
+        application.add_handler(CommandHandler("removepremium", remove_premium_handler))
+        application.add_handler(CommandHandler("resetlimit", reset_limit_handler))
+        application.add_handler(CommandHandler("broadcast", broadcast_handler))
 
-    # Message handlers with proper filtering
-    application.add_handler(MessageHandler(
-        filters.VIDEO | (filters.Document.VIDEO & ~filters.COMMAND),
-        video_handler
-    ))
-    application.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND,
-        text_handler
-    ))
+        # Message handlers with strict filtering
+        application.add_handler(MessageHandler(
+            filters.VIDEO | (filters.Document.VIDEO & ~filters.COMMAND),
+            video_handler
+        ))
+        application.add_handler(MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            text_handler
+        ))
 
-    # Button handlers
-    application.add_handler(CallbackQueryHandler(add_channel_handler, pattern="^add_channel$"))
-    application.add_handler(CallbackQueryHandler(my_channels_handler, pattern="^my_channels$"))
-    application.add_handler(CallbackQueryHandler(remove_channel_handler, pattern="^remove_channel$"))
-    application.add_handler(CallbackQueryHandler(premium_help_handler, pattern="^premium_help$"))
+        # Button handlers
+        application.add_handler(CallbackQueryHandler(add_channel_handler, pattern="^add_channel$"))
+        application.add_handler(CallbackQueryHandler(my_channels_handler, pattern="^my_channels$"))
+        application.add_handler(CallbackQueryHandler(remove_channel_handler, pattern="^remove_channel$"))
+        application.add_handler(CallbackQueryHandler(premium_help_handler, pattern="^premium_help$"))
 
-    # Run the bot until Ctrl-C is pressed
-    application.run_polling()
+        # Run the bot until Ctrl-C is pressed
+        logger.info("Starting bot...")
+        application.run_polling(
+            poll_interval=1.0,
+            timeout=10,
+            drop_pending_updates=True
+        )
+
+    except Exception as e:
+        logger.critical(f"Fatal error in main: {e}", exc_info=True)
+        raise
 
 if __name__ == '__main__':
     main()
