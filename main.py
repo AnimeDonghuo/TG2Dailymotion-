@@ -1,6 +1,12 @@
 import logging
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
-from handlers.command_handlers import start_handler, help_handler, limit_status_handler, channel_status_handler
+from handlers.command_handlers import (
+    start_handler, 
+    help_handler, 
+    limit_status_handler, 
+    channel_status_handler,
+    full_guide_handler
+)
 from handlers.message_handlers import video_handler, text_handler
 from handlers.channel_handlers import add_channel_handler, my_channels_handler, remove_channel_handler
 from handlers.premium_handlers import premium_help_handler, pricing_handler
@@ -24,7 +30,7 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_handler))
     application.add_handler(CommandHandler("limitstatus", limit_status_handler))
     application.add_handler(CommandHandler("channelstatus", channel_status_handler))
-    application.add_handler(CommandHandler("fullguide", help_handler))
+    application.add_handler(CommandHandler("fullguide", full_guide_handler))
     application.add_handler(CommandHandler("pricing", pricing_handler))
     application.add_handler(CommandHandler("ping", lambda update, context: update.message.reply_text("Pong!")))
     
